@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.project2.sudoku.ui.theme.SudokuTheme
 import kotlinx.coroutines.delay
 import com.project2.sudoku.model.SudokuCell
@@ -45,6 +46,7 @@ enum class Difficulty(val label: String, val color: Color, val textColor: Color)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         setContent {
             SudokuTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF1A1A1A)) {
@@ -60,70 +62,74 @@ fun SudokuGameApp() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("sudoku_prefs", Context.MODE_PRIVATE) }
 
-    // 1. 상태 선언 (초기화는 나중에)
     var difficulty by remember { mutableStateOf<Difficulty?>(null) }
     var gameSize by remember { mutableIntStateOf(0) }
     var isInitialized by remember { mutableStateOf(false) }
 
-    // 2. 앱 실행 시 저장된 게임이 있는지 단 한 번만 체크
     LaunchedEffect(Unit) {
         val savedBoard = prefs.getString("saved_board", null)
         val savedSize = prefs.getInt("saved_size", 0)
         val savedDiffName = prefs.getString("saved_difficulty", null)
 
         if (savedBoard != null && savedSize != 0 && savedDiffName != null) {
-            difficulty = Difficulty.valueOf(savedDiffName)
-            gameSize = savedSize
+            try {
+                difficulty = Difficulty.valueOf(savedDiffName)
+                gameSize = savedSize
+            } catch (e: Exception) { clearSave(prefs) }
         }
         isInitialized = true
     }
 
-    if (!isInitialized) return // 로딩 중에는 아무것도 안 보여줌
+    if (!isInitialized) return
 
-    if (difficulty == null) {
-        // [메인 화면: 난이도 선택]
-        Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
-            Text("SUDOKU MASTER", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color.White)
-            Spacer(Modifier.height(40.dp))
-            Difficulty.values().forEach { diff ->
-                Button(
-                    onClick = { difficulty = diff },
-                    modifier = Modifier.fillMaxWidth(0.6f).padding(8.dp).height(65.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = diff.color, contentColor = diff.textColor)
-                ) {
-                    Text(diff.label, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    } else if (gameSize == 0) {
-        // [사이즈 선택 화면]
-        Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
-            Text("MODE: ${difficulty!!.label}", color = difficulty!!.color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("사이즈를 선택하세요", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(Modifier.height(30.dp))
-            listOf(5, 7, 9).forEach { size ->
-                val bestTime = prefs.getLong("best_time_${size}_${difficulty!!.name}", 0L)
-                OutlinedButton(
-                    onClick = { gameSize = size },
-                    modifier = Modifier.fillMaxWidth(0.7f).padding(8.dp).height(80.dp),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, difficulty!!.color),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${size} x ${size}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        if (bestTime > 0L) Text("🏆 BEST: ${formatTime(bestTime)}", fontSize = 12.sp, color = Color.Yellow)
-                        else Text("기록 없음", fontSize = 11.sp, color = Color.Gray)
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (difficulty == null) {
+            Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
+                Text("SUDOKU MASTER", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Spacer(Modifier.height(40.dp))
+                Difficulty.values().forEach { diff ->
+                    Button(
+                        onClick = { difficulty = diff },
+                        modifier = Modifier.fillMaxWidth(0.6f).padding(8.dp).height(65.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = diff.color, contentColor = diff.textColor)
+                    ) {
+                        Text(diff.label, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-            TextButton(onClick = { difficulty = null }) { Text("난이도 다시 선택", color = Color.Gray) }
+        } else if (gameSize == 0) {
+            Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
+                Text("MODE: ${difficulty!!.label}", color = difficulty!!.color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("사이즈를 선택하세요", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.height(30.dp))
+                listOf(5, 7, 9).forEach { size ->
+                    val bestTime = prefs.getLong("best_time_${size}_${difficulty!!.name}", 0L)
+                    // 난이도와 사이즈가 조합된 연승 기록 키 사용
+                    val streak = prefs.getInt("streak_${size}_${difficulty!!.name}", 0)
+
+                    OutlinedButton(
+                        onClick = { gameSize = size },
+                        modifier = Modifier.fillMaxWidth(0.7f).padding(8.dp).height(85.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, difficulty!!.color),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("${size} x ${size}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (bestTime > 0L) Text("🏆 ${formatTime(bestTime)} ", fontSize = 12.sp, color = Color.Yellow)
+                                if (streak > 0) Text(" 🔥 $streak", fontSize = 12.sp, color = Color.Cyan)
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = { difficulty = null }) { Text("난이도 다시 선택", color = Color.Gray) }
+            }
+        } else {
+            SudokuGameScreen(size = gameSize, difficulty = difficulty!!, onBack = {
+                gameSize = 0
+                difficulty = null
+            })
         }
-    } else {
-        // [실제 게임 화면]
-        SudokuGameScreen(size = gameSize, difficulty = difficulty!!, onBack = {
-            gameSize = 0
-            difficulty = null
-        })
     }
 }
 
@@ -134,9 +140,13 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("sudoku_prefs", Context.MODE_PRIVATE) }
 
-    // 데이터 복구 로직
+    // 이 조합의 고유 키 생성
+    val comboKey = "${size}_${difficulty.name}"
+    val bestTimeKey = "best_time_$comboKey"
+    val streakKey = "streak_$comboKey"
+
     val savedBoardJson = prefs.getString("saved_board", null)
-    val isResume = savedBoardJson != null && prefs.getInt("saved_size", 0) == size
+    val isResume = savedBoardJson != null && prefs.getInt("saved_size", 0) == size && prefs.getString("saved_difficulty", "") == difficulty.name
 
     val initialBoard = remember {
         if (isResume) deserializeBoard(savedBoardJson!!)
@@ -147,13 +157,14 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
     var selectedIndex by remember { mutableIntStateOf(-1) }
     var lives by remember { mutableIntStateOf(if (isResume) prefs.getInt("saved_lives", 5) else 5) }
     var timerSeconds by remember { mutableLongStateOf(if (isResume) prefs.getLong("saved_timer", 0L) else 0L) }
-    var currentStreak by remember { mutableIntStateOf(prefs.getInt("current_streak_$size", 0)) }
-    var bestTime by remember { mutableLongStateOf(prefs.getLong("best_time_${size}_${difficulty.name}", 0L)) }
+
+    // 실시간 표시용 상태
+    var currentStreak by remember { mutableIntStateOf(prefs.getInt(streakKey, 0)) }
+    var bestTime by remember { mutableLongStateOf(prefs.getLong(bestTimeKey, 0L)) }
 
     var isTimerRunning by remember { mutableStateOf(true) }
     var showWinDialog by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
-    var isNewBest by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(" ", selection = TextRange(1))) }
 
     fun autoSave() {
@@ -167,7 +178,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
         }
     }
 
-    fun clearSave() {
+    fun doClearSave() {
         prefs.edit().remove("saved_board").remove("saved_size").remove("saved_difficulty").remove("saved_lives").remove("saved_timer").apply()
     }
 
@@ -175,7 +186,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
         while (isTimerRunning) {
             delay(1000L)
             timerSeconds++
-            if (timerSeconds % 3 == 0L) autoSave() // 3초마다 자동 저장
+            if (timerSeconds % 5 == 0L) autoSave()
         }
     }
 
@@ -203,11 +214,12 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
                     newList[selectedIndex] = newList[selectedIndex].copy(value = num)
                     cells = checkBoardValidity(newList, selectedIndex, size) {
                         lives--
+                        // 게임 오버 시에만 연승 초기화
                         if (lives <= 0) {
-                            currentStreak = 0
-                            prefs.edit().putInt("current_streak_$size", 0).apply()
                             isTimerRunning = false
-                            clearSave()
+                            currentStreak = 0
+                            prefs.edit().putInt(streakKey, 0).apply()
+                            doClearSave()
                         }
                     }
                     processed = true
@@ -219,22 +231,28 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
             autoSave()
             selectedIndex = -1
             focusManager.clearFocus()
+
+            // 모든 칸을 채웠고 에러가 없는 경우 승리
             if (cells.all { it.value != 0 && !it.isError }) {
                 isTimerRunning = false
+
+                // 1. 연승 증가 및 저장
                 currentStreak++
-                prefs.edit().putInt("current_streak_$size", currentStreak).apply()
+                prefs.edit().putInt(streakKey, currentStreak).apply()
+
+                // 2. 최고 기록 갱신 확인
                 if (bestTime == 0L || timerSeconds < bestTime) {
                     bestTime = timerSeconds
-                    isNewBest = true
-                    prefs.edit().putLong("best_time_${size}_${difficulty.name}", timerSeconds).apply()
+                    prefs.edit().putLong(bestTimeKey, timerSeconds).apply()
                 }
-                clearSave()
+
+                doClearSave()
                 showWinDialog = true
             }
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))) {
         TextField(
             value = textFieldValue,
             onValueChange = { nv ->
@@ -248,6 +266,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
 
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             IconButton(onClick = { showExitDialog = true }) { Text("🏠", color = Color.White) }
+
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(modifier = Modifier.fillMaxWidth(if(size==9)1f else 0.8f).padding(bottom=8.dp), Arrangement.SpaceBetween, Alignment.Bottom) {
@@ -258,7 +277,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("${"❤️".repeat(lives.coerceAtLeast(0))}", fontSize = 16.sp)
-                            Text("🔥 STREAK: $currentStreak", fontSize = 10.sp, color = Color.Cyan)
+                            Text("🔥 STREAK: $currentStreak", fontSize = 11.sp, color = Color.Cyan, fontWeight = FontWeight.Bold)
                         }
                     }
                     LazyVerticalGrid(columns = GridCells.Fixed(size), modifier = Modifier.fillMaxWidth(if(size==9)1f else 0.8f).aspectRatio(1f).border(2.dp, Color.White)) {
@@ -272,7 +291,8 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
                     }
                 }
             }
-            Button(onClick = { clearSave(); onBack() }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
+            // 이 버튼은 데이터를 완전히 지우고 처음으로 돌아갑니다.
+            Button(onClick = { doClearSave(); onBack() }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
                 Text("RESET & QUIT")
             }
         }
@@ -284,17 +304,26 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, onBack: () -> Unit) {
             )
         }
         if (showWinDialog) {
-            AlertDialog(onDismissRequest = {}, title = { Text("🎉 SUCCESS!") }, text = { Text("시간: ${formatTime(timerSeconds)}") },
-                confirmButton = { Button(onClick = { clearSave(); onBack() }) { Text("확인") } }
+            AlertDialog(onDismissRequest = {}, title = { Text("🎉 SUCCESS!") },
+                text = { Text("시간: ${formatTime(timerSeconds)}\n현재 연승: $currentStreak 🔥") },
+                confirmButton = { Button(onClick = { doClearSave(); onBack() }) { Text("확인") } }
             )
         }
         if (lives <= 0) {
-            AlertDialog(onDismissRequest = {}, title = { Text("💀 GAME OVER") }, confirmButton = { Button(onClick = { clearSave(); onBack() }) { Text("확인") } })
+            AlertDialog(onDismissRequest = {}, title = { Text("💀 GAME OVER") },
+                text = { Text("목숨을 모두 잃었습니다. 연승이 초기화됩니다.") },
+                confirmButton = { Button(onClick = { doClearSave(); onBack() }) { Text("확인") } }
+            )
         }
     }
 }
 
-// --- 보조 함수 (JSON) ---
+// 공통 데이터 삭제 함수
+fun clearSave(prefs: android.content.SharedPreferences) {
+    prefs.edit().remove("saved_board").remove("saved_size").remove("saved_difficulty").remove("saved_lives").remove("saved_timer").apply()
+}
+
+// 보드 직렬화
 fun serializeBoard(cells: List<SudokuCell>): String {
     val array = JSONArray()
     cells.forEach { cell ->
@@ -304,6 +333,7 @@ fun serializeBoard(cells: List<SudokuCell>): String {
     return array.toString()
 }
 
+// 보드 역직렬화
 fun deserializeBoard(json: String): List<SudokuCell> {
     val array = JSONArray(json)
     return List(array.length()) { i ->
@@ -321,15 +351,15 @@ fun generateValidSudoku(size: Int, difficulty: Difficulty): List<SudokuCell> {
         val nR = if (c == size - 1) r + 1 else r
         val nC = (c + 1) % size
         val nums = (1..size).shuffled()
-        for (n in nums) {
-            if (isSafe(board, r, c, n, size)) {
-                board[r][c] = n; if (solve(nR, nC)) return true; board[r][c] = 0
-            }
-        }
+        for (n in nums) { if (isSafe(board, r, c, n, size)) { board[r][c] = n; if (solve(nR, nC)) return true; board[r][c] = 0 } }
         return false
     }
     solve(0, 0)
-    val targetHints = when(size) { 5 -> 12; 7 -> 24; else -> 35 }
+    val targetHints = when(size) {
+        5 -> when(difficulty) { Difficulty.EASY -> 14; Difficulty.MEDIUM -> 11; Difficulty.HARD -> 8 }
+        7 -> when(difficulty) { Difficulty.EASY -> 28; Difficulty.MEDIUM -> 22; Difficulty.HARD -> 16 }
+        else -> when(difficulty) { Difficulty.EASY -> 42; Difficulty.MEDIUM -> 33; Difficulty.HARD -> 25 }
+    }
     val isFixed = MutableList(size * size) { true }
     val indices = (0 until size * size).shuffled()
     var currentCount = size * size
