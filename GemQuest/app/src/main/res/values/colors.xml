@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Gem Colors -->
+    <color name="ruby">#FF6B6B</color>
+    <color name="sapphire">#54A0FF</color>
+    <color name="emerald">#26DE81</color>
+    <color name="topaz">#FECA57</color>
+    <color name="amethyst">#A29BFE</color>
+    <color name="diamond">#FFFFFF</color>
+    
+    <!-- UI Colors -->
+    <color name="purple_primary">#667EEA</color>
+    <color name="purple_secondary">#764BA2</color>
+    <color name="pink_secondary">#F093FB</color>
+    <color name="gold">#FFD700</color>
+    
+    <!-- Background -->
+    <color name="bg_dark">#1A1A2E</color>
+    <color name="bg_secondary">#16213E</color>
+</resources>

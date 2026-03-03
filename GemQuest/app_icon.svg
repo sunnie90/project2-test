@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffed4e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffa500;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bgGradient)"/>
+  
+  <!-- Diamond/Gem Shape -->
+  <g filter="url(#shadow)">
+    <!-- Top facet -->
+    <path d="M 256 100 L 350 200 L 256 180 L 162 200 Z" fill="url(#gemGradient)" opacity="0.9"/>
+    <!-- Left facet -->
+    <path d="M 162 200 L 256 180 L 256 350 L 180 240 Z" fill="#ffed4e" opacity="0.8"/>
+    <!-- Right facet -->
+    <path d="M 350 200 L 256 180 L 256 350 L 332 240 Z" fill="#ffc107" opacity="0.7"/>
+    <!-- Bottom left -->
+    <path d="M 180 240 L 256 350 L 256 420 Z" fill="#ffa500" opacity="0.85"/>
+    <!-- Bottom right -->
+    <path d="M 332 240 L 256 350 L 256 420 Z" fill="#ff8c00" opacity="0.75"/>
+    
+    <!-- Highlight -->
+    <path d="M 256 100 L 280 140 L 256 180 L 232 140 Z" fill="#ffffff" opacity="0.6"/>
+  </g>
+  
+  <!-- Sparkles -->
+  <circle cx="150" cy="150" r="8" fill="#ffffff" opacity="0.8"/>
+  <circle cx="380" cy="160" r="6" fill="#ffffff" opacity="0.7"/>
+  <circle cx="140" cy="340" r="7" fill="#ffffff" opacity="0.75"/>
+  <circle cx="370" cy="360" r="9" fill="#ffffff" opacity="0.8"/>
+</svg>

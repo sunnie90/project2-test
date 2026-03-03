@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Gem Quest</string>
+    <string name="play_game">게임 시작</string>
+    <string name="tutorial">튜토리얼</string>
+    <string name="leaderboard">리더보드</string>
+    <string name="settings">설정</string>
+    <string name="score">점수</string>
+    <string name="goal">목표</string>
+    <string name="moves">이동</string>
+    <string name="level">레벨</string>
+    <string name="game_over">게임 오버</string>
+    <string name="level_complete">레벨 완료!</string>
+    <string name="next_level">다음 레벨</string>
+    <string name="main_menu">메인 메뉴</string>
+    <string name="restart">다시 시작</string>
+</resources>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Diamond/Gem Shape -->
+    <group
+        android:translateX="54"
+        android:translateY="54">
+        
+        <!-- Top facet -->
+        <path
+            android:fillColor="#FFD700"
+            android:pathData="M 0,-30 L 20,-5 L 0,-8 L -20,-5 Z" />
+        
+        <!-- Left facet -->
+        <path
+            android:fillColor="#FFED4E"
+            android:pathData="M -20,-5 L 0,-8 L 0,25 L -15,5 Z" />
+        
+        <!-- Right facet -->
+        <path
+            android:fillColor="#FFC107"
+            android:pathData="M 20,-5 L 0,-8 L 0,25 L 15,5 Z" />
+        
+        <!-- Bottom left -->
+        <path
+            android:fillColor="#FFA500"
+            android:pathData="M -15,5 L 0,25 L 0,35 Z" />
+        
+        <!-- Bottom right -->
+        <path
+            android:fillColor="#FF8C00"
+            android:pathData="M 15,5 L 0,25 L 0,35 Z" />
+        
+        <!-- Highlight -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.6"
+            android:pathData="M 0,-30 L 5,-20 L 0,-8 L -5,-20 Z" />
+        
+        <!-- Sparkles -->
+        <circle
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.8"
+            android:cx="-25"
+            android:cy="-25"
+            android:radius="2" />
+        
+        <circle
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.7"
+            android:cx="28"
+            android:cy="-22"
+            android:radius="1.5" />
+        
+        <circle
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.75"
+            android:cx="-28"
+            android:cy="20"
+            android:radius="1.8" />
+        
+        <circle
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.8"
+            android:cx="25"
+            android:cy="22"
+            android:radius="2.2" />
+    </group>
+</vector>
