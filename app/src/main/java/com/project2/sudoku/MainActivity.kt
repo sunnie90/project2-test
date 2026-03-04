@@ -49,7 +49,7 @@ import com.project2.sudoku.model.SudokuCell
 import org.json.JSONArray
 import org.json.JSONObject
 
-// --- 배경음악 및 피드백 관리 ---
+// --- 음악 및 피드백 매니저 (기본 유지) ---
 class BackgroundMusicManager(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
     fun startMusic() {
@@ -169,7 +169,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
-    val activity = context as? Activity // Activity 참조 획득 (finish() 에러 해결용)
+    val activity = context as? Activity
     val prefs = remember { context.getSharedPreferences("sudoku_prefs", Context.MODE_PRIVATE) }
     val comboKey = "${size}_${difficulty.name}"
     val scrollState = rememberScrollState()
@@ -189,8 +189,8 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
     var showExitDialog by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(" ", selection = TextRange(1))) }
 
-    fun autoSave() { prefs.edit().apply { putString("saved_board", serializeBoard(cells)); putInt("saved_size", size); putString("saved_difficulty", difficulty.name); putInt("saved_lives", lives); putLong("saved_timer", timerSeconds); apply() } }
     fun doClearSave() { prefs.edit().remove("saved_board").remove("saved_size").remove("saved_difficulty").remove("saved_lives").remove("saved_timer").apply() }
+    fun autoSave() { prefs.edit().apply { putString("saved_board", serializeBoard(cells)); putInt("saved_size", size); putString("saved_difficulty", difficulty.name); putInt("saved_lives", lives); putLong("saved_timer", timerSeconds); apply() } }
 
     LaunchedEffect(isTimerRunning) { while (isTimerRunning) { delay(1000L); timerSeconds++; if (timerSeconds % 5 == 0L) autoSave() } }
 
@@ -221,7 +221,10 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
                         newList[selectedIndex] = currentCell.copy(value = num, notes = emptySet())
                         cells = checkBoardValidity(newList, selectedIndex, size) {
                             feedbackManager.vibrateError(); lives--
-                            if (lives <= 0) { isTimerRunning = false; currentStreak = 0; prefs.edit().putInt("streak_$comboKey", 0).apply(); doClearSave() }
+                            if (lives <= 0) {
+                                isTimerRunning = false; currentStreak = 0;
+                                prefs.edit().putInt("streak_$comboKey", 0).apply(); doClearSave()
+                            }
                         }
                         shouldCloseKeyboard = true
                     }
@@ -229,7 +232,24 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
             }
         }
         if (shouldCloseKeyboard) { selectedIndex = -1; focusManager.clearFocus() }
-        autoSave()
+
+        // --- [성공 판정 로직] ---
+        val allFilled = cells.all { it.value != 0 }
+        val noErrors = cells.none { it.isError }
+        if (allFilled && noErrors) {
+            isTimerRunning = false
+            feedbackManager.playWinSound(isSoundEnabled)
+            currentStreak++
+            prefs.edit().putInt("streak_$comboKey", currentStreak).apply()
+            if (bestTime == 0L || timerSeconds < bestTime) {
+                bestTime = timerSeconds
+                prefs.edit().putLong("best_time_$comboKey", timerSeconds).apply()
+            }
+            doClearSave()
+            showWinDialog = true
+        } else {
+            autoSave()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))) {
@@ -295,13 +315,11 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
 
             Spacer(Modifier.height(24.dp))
 
-            // --- 4단 통합 하단 버튼 바 (MENU / HINT / MEMO / QUIT) ---
+            // --- 4단 통합 하단 버튼 바 ---
             Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), Arrangement.SpaceEvenly) {
-                // 1. MENU
                 Button(onClick = { showExitDialog = true }, modifier = Modifier.weight(1f).height(50.dp).padding(horizontal = 2.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
                     Text("MENU", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
-                // 2. HINT
                 Button(onClick = {
                     if (selectedIndex != -1 && !cells[selectedIndex].isFixed && lives > 1) {
                         for (num in 1..size) {
@@ -315,11 +333,9 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
                 }, enabled = selectedIndex != -1 && lives > 1 && !cells[selectedIndex].isFixed, modifier = Modifier.weight(1f).height(50.dp).padding(horizontal = 2.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700), contentColor = Color.Black, disabledContainerColor = Color(0xFF555522))) {
                     Text("HINT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
-                // 3. MEMO
                 Button(onClick = { isNoteMode = !isNoteMode }, modifier = Modifier.weight(1f).height(50.dp).padding(horizontal = 2.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isNoteMode) Color.Yellow else Color(0xFF444444))) {
                     Text(if (isNoteMode) "✎ ON" else "✎ OFF", color = if (isNoteMode) Color.Black else Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
-                // 4. QUIT (어두운 빨강 + Activity 종료 로직 해결)
                 Button(onClick = { activity?.finish() }, modifier = Modifier.weight(1f).height(50.dp).padding(horizontal = 2.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B0000))) {
                     Text("QUIT", color = Color(0xFFCCCCCC), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
@@ -330,17 +346,40 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
             Spacer(Modifier.height(20.dp))
         }
 
+        // --- [다이얼로그 영역] ---
+
+        // 성공 다이얼로그 (2가지 버튼 복구)
+        if (showWinDialog) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("🎉 SUCCESS!") },
+                text = { Text("기록: ${formatTime(timerSeconds)}\n연승: $currentStreak 🔥\n\n한 판 더 하시겠습니까?") },
+                confirmButton = {
+                    Button(onClick = {
+                        // 새 게임 시작 로직
+                        cells = generateValidSudoku(size, difficulty)
+                        lives = 5
+                        timerSeconds = 0
+                        isTimerRunning = true
+                        showWinDialog = false
+                    }) { Text("새 게임") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showWinDialog = false
+                        onBack() // 메뉴로 이동
+                    }) { Text("메뉴로") }
+                }
+            )
+        }
+
         if (showExitDialog) {
             AlertDialog(onDismissRequest = { showExitDialog = false }, title = { Text("MENU") }, text = { Text("진행 상황은 자동 저장됩니다. 메뉴로 돌아가시겠습니까?") },
                 confirmButton = { Button(onClick = { showExitDialog = false; onBack() }) { Text("확인") } },
                 dismissButton = { TextButton(onClick = { showExitDialog = false }) { Text("취소") } }
             )
         }
-        if (showWinDialog) {
-            AlertDialog(onDismissRequest = {}, title = { Text("🎉 SUCCESS!") }, text = { Text("기록: ${formatTime(timerSeconds)}\n연승: $currentStreak 🔥") },
-                confirmButton = { Button(onClick = { showWinDialog = false; doClearSave(); onBack() }) { Text("확인") } }
-            )
-        }
+
         if (lives <= 0) {
             AlertDialog(onDismissRequest = {}, title = { Text("💀 GAME OVER") }, text = { Text("목숨을 모두 잃었습니다.") },
                 confirmButton = { Button(onClick = { doClearSave(); onBack() }) { Text("메뉴로") } }
@@ -349,7 +388,7 @@ fun SudokuGameScreen(size: Int, difficulty: Difficulty, feedbackManager: Feedbac
     }
 }
 
-// --- 보조 로직 함수들 ---
+// --- 나머지 헬퍼 함수들은 이전과 동일 (isValidHint, generateValidSudoku 등) ---
 fun isValidHint(current: List<SudokuCell>, idx: Int, num: Int, size: Int): Boolean {
     val r = idx / size; val c = idx % size
     for (i in 0 until size * size) {
